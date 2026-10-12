@@ -8,6 +8,7 @@ const MODULE_COLORS: Record<ModuleType, string> = {
   shield: "#70a9ff",
   blackHole: "#bd8bff",
   turbo: "#72e4c4",
+  gap: "#83a4bd",
 };
 
 const MODULE_SYMBOLS: Record<ModuleType, string> = {
@@ -17,6 +18,7 @@ const MODULE_SYMBOLS: Record<ModuleType, string> = {
   shield: "⬡",
   blackHole: "◉",
   turbo: "➤",
+  gap: "▽",
 };
 
 export class GameRenderer {
@@ -145,7 +147,11 @@ export class GameRenderer {
 
     const suitColor = manager.astronaut.configuration.suitColor;
     const jumpHeight = manager.isAirborne
-      ? Math.sin(((0.82 - manager.astronaut.airborneSeconds) / 0.82) * Math.PI) * 61
+      ? Math.sin(
+          ((manager.astronaut.airborneDurationSeconds - manager.astronaut.airborneSeconds) /
+            manager.astronaut.airborneDurationSeconds) *
+            Math.PI,
+        ) * 61
       : 0;
     this.drawAstronaut(
       context,
@@ -276,6 +282,46 @@ export class GameRenderer {
     const left = x + gap / 2;
     const top = groundY;
     const tileWidth = cellWidth - gap;
+
+    if (type === "gap") {
+      context.fillStyle = "rgba(4, 6, 14, 0.98)";
+      context.beginPath();
+      context.ellipse(x + cellWidth / 2, top + 14, tileWidth * 0.49, 16, 0, 0, Math.PI * 2);
+      context.fill();
+      context.strokeStyle = "rgba(131, 164, 189, 0.8)";
+      context.lineWidth = 1;
+      context.beginPath();
+      context.moveTo(left + 2, top + 1);
+      context.lineTo(left + 4, top + 15);
+      context.quadraticCurveTo(
+        x + cellWidth / 2,
+        top + 28,
+        left + tileWidth - 4,
+        top + 15,
+      );
+      context.lineTo(left + tileWidth - 2, top + 1);
+      context.stroke();
+      const voidGradient = context.createRadialGradient(
+        x + cellWidth / 2,
+        top + 16,
+        1,
+        x + cellWidth / 2,
+        top + 16,
+        tileWidth * 0.47,
+      );
+      voidGradient.addColorStop(0, "rgba(9, 15, 28, 0.98)");
+      voidGradient.addColorStop(0.62, "rgba(20, 34, 52, 0.82)");
+      voidGradient.addColorStop(1, "rgba(131, 164, 189, 0)");
+      context.fillStyle = voidGradient;
+      context.beginPath();
+      context.ellipse(x + cellWidth / 2, top + 16, tileWidth * 0.45, 12, 0, 0, Math.PI * 2);
+      context.fill();
+      context.fillStyle = "#c1d0e2";
+      context.font = "600 7px system-ui, sans-serif";
+      context.textAlign = "center";
+      context.fillText("VAZIO", x + cellWidth / 2, top - 7);
+      return;
+    }
 
     context.fillStyle = "rgba(3, 8, 18, 0.32)";
     context.beginPath();

@@ -91,6 +91,7 @@
               <span class="live-indicator" aria-hidden="true"></span>
               <span><small>SIMULAÇÃO DE FUGA</small><strong id="mission-status">AGUARDANDO LANÇAMENTO</strong></span>
             </div>
+            <button class="end-mission-button" id="end-mission-button" type="button" hidden>Encerrar missão <span>×</span></button>
             <div class="game-stats" aria-live="polite">
               <div class="stat"><span>DISTÂNCIA</span><strong><span id="distance-value">0</span><small> blocos</small></strong></div>
               <div class="stat"><span>TEMPO DE FUGA</span><strong id="time-value">00:00</strong></div>
@@ -108,10 +109,23 @@
               <div class="results-stats">
                 <div><span>DISTÂNCIA</span><strong id="results-distance">0 blocos</strong></div>
                 <div><span>TEMPO</span><strong id="results-time">00:00</strong></div>
-                <div><span>MÓDULOS EVITADOS</span><strong id="results-avoided">0</strong></div>
-                <div><span>ENERGIA COLETADA</span><strong id="results-energy">0%</strong></div>
+                <div><span>MÓDULOS EVITADOS</span><strong id="results-modules-avoided">0</strong></div>
+                <div><span>EXPLOSIVOS EVITADOS</span><strong id="results-avoided">0</strong></div>
+                <div><span>BOMBAS ACIONADAS</span><strong id="results-exploded">0</strong></div>
+                <div><span>EXPLOSÕES ABSORVIDAS PELO ESCUDO</span><strong id="results-absorbed">0</strong></div>
+                <div><span>MÓDULOS DE ENERGIA</span><strong id="results-energy-modules">0</strong></div>
+                <div><span>ESCUDOS ATIVADOS</span><strong id="results-shields">0</strong></div>
+                <div><span>SUPER SALTOS</span><strong id="results-super-jumps">0</strong></div>
+                <div><span>ULTRA SALTOS</span><strong id="results-ultra-jumps">0</strong></div>
+                <div><span>QUASE MORTES EVITADAS</span><strong id="results-near-deaths">0</strong></div>
+                <div><span>ENERGIA RECUPERADA</span><strong id="results-energy">0%</strong></div>
               </div>
-              <button class="primary-button results-button" id="results-history-button" type="button">Revisar histórico <span>↓</span></button>
+              <button class="primary-button results-button" id="results-route-button" type="button">Visualizar percurso completo <span>⌄</span></button>
+              <section class="route-review" id="route-review" aria-labelledby="route-heading" hidden>
+                <div class="route-heading"><h3 id="route-heading">Sequência percorrida</h3><span id="route-count">0 blocos</span></div>
+                <ol class="route-strip" id="route-strip" aria-label="Mapa de todos os blocos percorridos"></ol>
+              </section>
+              <button class="secondary-results-button" id="results-history-button" type="button">Abrir histórico detalhado ↗</button>
             </section>
           </div>
           <div class="game-footer">
@@ -120,6 +134,7 @@
               <span><i class="legend-dot energy"></i> Energia</span>
               <span><i class="legend-dot shield"></i> Escudo</span>
               <span><i class="legend-dot black-hole"></i> Buraco negro</span>
+              <span><i class="legend-dot gap"></i> Lacuna</span>
               <span><i class="legend-dot turbo"></i> Turbo</span>
             </div>
             <div class="controls-hint"><kbd>ESPAÇO</kbd> / <kbd>↑</kbd> saltar <span>·</span> salto duplo no ar <button class="jump-button" id="jump-button" type="button" aria-label="Saltar">SALTAR ↗</button></div>
@@ -133,10 +148,11 @@
               <span class="subtle-icon" aria-hidden="true">⌁</span>
             </div>
             <div class="module-guide">
-              <article><span class="guide-icon explosive">✹</span><div><strong>Módulo explosivo</strong><p>Qualquer salto ativo evita a explosão. O salto duplo amplia a janela.</p></div></article>
+              <article><span class="guide-icon explosive">✹</span><div><strong>Módulo explosivo</strong><p>Só o super salto duplo ou um escudo ativo evita o dano.</p></div></article>
               <article><span class="guide-icon energy">ϟ</span><div><strong>Recarga de energia</strong><p>Recarregue a bateria do traje em até 25%.</p></div></article>
               <article><span class="guide-icon shield">⬡</span><div><strong>Escudo temporário</strong><p>Fique imune a explosivos por alguns segundos.</p></div></article>
-              <article><span class="guide-icon black-hole">◉</span><div><strong>Buraco negro</strong><p>Um passo em falso e a missão acaba.</p></div></article>
+              <article><span class="guide-icon black-hole">◉</span><div><strong>Buraco negro</strong><p>Você fica preso; salte antes de ser sugado.</p></div></article>
+              <article><span class="guide-icon gap">▽</span><div><strong>Lacuna no espaço</strong><p>Sem salto a tempo, a queda encerra a missão.</p></div></article>
               <article><span class="guide-icon turbo">➤</span><div><strong>Turbo automático</strong><p>Salte três blocos à frente instantaneamente.</p></div></article>
             </div>
           </section>
@@ -148,6 +164,9 @@
             <div class="tab-buttons" role="tablist" aria-label="Registros">
               <button class="tab-button active" id="history-tab" type="button" role="tab" aria-selected="true" aria-controls="history-panel">Histórico</button>
               <button class="tab-button" id="ranking-tab" type="button" role="tab" aria-selected="false" aria-controls="ranking-panel">Ranking</button>
+            </div>
+            <div class="ranking-column-labels" id="ranking-column-labels" hidden>
+              <span>ASTRONAUTA</span><span>RECORDES</span>
             </div>
             <div class="record-list" id="history-panel" role="tabpanel" aria-labelledby="history-tab">
               <p class="empty-state">Seu trajeto aparecerá aqui após a missão.</p>

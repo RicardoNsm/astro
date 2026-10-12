@@ -13,6 +13,7 @@ export class Astronaut {
   public shieldSeconds = 0;
   public jumpCount = 0;
   public airborneSeconds = 0;
+  public airborneDurationSeconds = 0;
 
   public constructor(public readonly configuration: AstronautConfiguration) {}
 
@@ -24,11 +25,13 @@ export class Astronaut {
     if (this.airborneSeconds <= 0) {
       this.jumpCount = 1;
       this.airborneSeconds = 0.78;
+      this.airborneDurationSeconds = 0.78;
       return true;
     }
     if (this.jumpCount === 1) {
       this.jumpCount = 2;
-      this.airborneSeconds = 0.82;
+      this.airborneSeconds += 0.82;
+      this.airborneDurationSeconds = Math.max(this.airborneDurationSeconds, 0.78) + 0.82;
       return true;
     }
     return false;
@@ -38,6 +41,7 @@ export class Astronaut {
     this.airborneSeconds = Math.max(0, this.airborneSeconds - deltaSeconds);
     if (this.airborneSeconds === 0) {
       this.jumpCount = 0;
+      this.airborneDurationSeconds = 0;
     }
     this.shieldSeconds = Math.max(0, this.shieldSeconds - deltaSeconds);
   }
@@ -46,5 +50,19 @@ export class Astronaut {
     const recovered = Math.min(amount, 100 - this.energy);
     this.energy += recovered;
     return recovered;
+  }
+
+  public consumeEnergy(amount: number): boolean {
+    if (this.energy < amount) {
+      return false;
+    }
+    this.energy -= amount;
+    return true;
+  }
+
+  public launchTurboJump(durationSeconds: number): void {
+    this.jumpCount = 2;
+    this.airborneSeconds = durationSeconds;
+    this.airborneDurationSeconds = durationSeconds;
   }
 }

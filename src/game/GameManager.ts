@@ -11,17 +11,26 @@ export interface MissionSummary {
   readonly durationSeconds: number;
   readonly modulesAvoided: number;
   readonly energyCollected: number;
+  readonly explosivesAvoided: number;
+  readonly explosivesDetonated: number;
+  readonly explosionsAbsorbed: number;
+  readonly energyModulesCollected: number;
+  readonly shieldsUsed: number;
+  readonly superJumps: number;
+  readonly ultraJumps: number;
+  readonly nearDeaths: number;
   readonly cause: string;
 }
 
 const DIFFICULTY_SETTINGS = {
-  easy: { speed: 2.15, drain: 0.72, damage: 22 },
-  medium: { speed: 2.65, drain: 1, damage: 32 },
-  hard: { speed: 3.2, drain: 1.45, damage: 45 },
+  easy: { speed: 2.15, drain: 0.65, damage: 18, hazardGap: 7, blackHoleReaction: 1.15 },
+  medium: { speed: 2.65, drain: 1, damage: 32, hazardGap: 5, blackHoleReaction: 0.85 },
+  hard: { speed: 3.2, drain: 1.45, damage: 45, hazardGap: 3, blackHoleReaction: 0.6 },
 } as const;
 
 const SAFE_OPENING_BLOCKS = 6;
-const MIN_HAZARD_SEPARATION = 6;
+const DOUBLE_JUMP_ENERGY_COST = 12;
+const GAP_CHANCE = { easy: 0.012, medium: 0.025, hard: 0.04 } as const;
 
 export class GameManager {
   public readonly astronaut: Astronaut;
@@ -32,8 +41,18 @@ export class GameManager {
   public elapsedSeconds = 0;
   public modulesAvoided = 0;
   public energyCollected = 0;
+  public explosivesAvoided = 0;
+  public explosivesDetonated = 0;
+  public explosionsAbsorbed = 0;
+  public energyModulesCollected = 0;
+  public shieldsUsed = 0;
+  public superJumps = 0;
+  public ultraJumps = 0;
+  public nearDeaths = 0;
   private generatedThrough = 0;
   private lastHazardBlock = 0;
+  private caughtInBlackHoleBlock: number | null = null;
+  private blackHoleTimeRemaining = 0;
   private readonly settings: (typeof DIFFICULTY_SETTINGS)[keyof typeof DIFFICULTY_SETTINGS];
 
   public constructor(
@@ -55,8 +74,38 @@ export class GameManager {
     if (this.state !== "running") {
       return;
     }
+    const isSuperJump = this.astronaut.isAirborne && this.astronaut.jumpCount === 1;
+    if (
+      isSuperJump &&
+      (this.astronaut.energy <= DOUBLE_JUMP_ENERGY_COST ||
+        !this.astronaut.consumeEnergy(DOUBLE_JUMP_ENERGY_COST))
+    ) {
+      this.onMessage("Energia insuficiente para o super salto (12%)");
+      return;
+    }
     if (!this.astronaut.jump()) {
       this.onMessage("Salto duplo já utilizado");
+      return;
+    }
+    if (this.caughtInBlackHoleBlock !== null) {
+      const block = this.caughtInBlackHoleBlock;
+      this.caughtInBlackHoleBlock = null;
+      this.blackHoleTimeRemaining = 0;
+      this.nearDeaths += 1;
+      this.modulesAvoided += 1;
+      if (
+        !this.history.replaceLast({
+          block,
+          moduleType: "blackHole",
+          outcome: "Buraco negro evitado por salto",
+        })
+      ) {
+        throw new Error("Não foi possível atualizar o histórico do buraco negro.");
+      }
+      this.onMessage("Você escapou do buraco negro no último instante!");
+    }
+    if (isSuperJump) {
+      this.superJumps += 1;
     }
   }
 
@@ -74,7 +123,11 @@ export class GameManager {
     }
 
     let remainingTime = delta;
-    while (remainingTime > 0 && this.state === "running") {
+    while (
+      remainingTime > 0 &&
+      this.state === "running" &&
+      this.caughtInBlackHoleBlock === null
+    ) {
       const nextBlock = Math.floor(this.distance) + 1;
       const timeToBlock = (nextBlock - this.distance) / this.settings.speed;
 
@@ -90,6 +143,24 @@ export class GameManager {
       remainingTime = Math.max(0, remainingTime - timeToBlock);
       this.distance = nextBlock;
       this.resolveBlock(nextBlock);
+    }
+
+    if (this.state === "running" && this.caughtInBlackHoleBlock !== null) {
+      this.astronaut.update(remainingTime);
+      this.blackHoleTimeRemaining -= remainingTime;
+      if (this.blackHoleTimeRemaining <= 0) {
+        const block = this.caughtInBlackHoleBlock;
+        if (
+          !this.history.replaceLast({
+            block,
+            moduleType: "blackHole",
+            outcome: "Sugada pelo buraco negro",
+          })
+        ) {
+          throw new Error("Não foi possível atualizar o histórico do buraco negro.");
+        }
+        this.finish("O astronauta parou sobre um buraco negro e foi sugado.");
+      }
     }
 
     this.generateAhead();
@@ -119,12 +190,22 @@ export class GameManager {
       durationSeconds: Math.floor(this.elapsedSeconds),
       modulesAvoided: this.modulesAvoided,
       energyCollected: this.energyCollected,
+      explosivesAvoided: this.explosivesAvoided,
+      explosivesDetonated: this.explosivesDetonated,
+      explosionsAbsorbed: this.explosionsAbsorbed,
+      energyModulesCollected: this.energyModulesCollected,
+      shieldsUsed: this.shieldsUsed,
+      superJumps: this.superJumps,
+      ultraJumps: this.ultraJumps,
+      nearDeaths: this.nearDeaths,
       cause,
     };
     this.ranking.insertSorted({
       name: this.astronaut.configuration.name,
       distance: summary.distance,
-      durationSeconds: summary.durationSeconds,
+      bestTimeSeconds: summary.durationSeconds,
+      suitColor: this.astronaut.configuration.suitColor,
+      helmet: this.astronaut.configuration.helmet,
     });
     this.onGameOver(summary);
   }
@@ -141,7 +222,10 @@ export class GameManager {
 
     if (
       this.astronaut.isAirborne &&
-      (type === "energy" || type === "shield" || type === "turbo")
+      type !== "explosive" &&
+      type !== "blackHole" &&
+      type !== "gap" &&
+      type !== "clear"
     ) {
       outcome = "Ultrapassado durante o salto";
       this.onMessage("Módulo ultrapassado no salto — recurso não coletado");
@@ -151,14 +235,26 @@ export class GameManager {
 
     switch (type) {
       case "explosive":
-        if (this.shieldActive || this.astronaut.isAirborne) {
+        if (this.shieldActive) {
+          this.explosivesDetonated += 1;
+          this.explosionsAbsorbed += 1;
           this.modulesAvoided += 1;
-          outcome = this.shieldActive ? "Protegido pelo escudo" : "Explosivo evitado";
+          this.nearDeaths += 1;
+          outcome = "Explosão absorvida pelo escudo";
+          this.onMessage(outcome);
+        } else if (this.astronaut.isAirborne && this.astronaut.jumpCount >= 2) {
+          this.modulesAvoided += 1;
+          this.explosivesAvoided += 1;
+          outcome = "Super salto: explosivo evitado";
           this.onMessage(outcome);
         } else {
           this.astronaut.energy = Math.max(0, this.astronaut.energy - this.settings.damage);
-          outcome = "Dano: salto duplo ou escudo necessário";
-          this.onMessage("Explosão! Faça o salto duplo para evitar dano");
+          this.explosivesDetonated += 1;
+          if (this.astronaut.energy > 0 && this.astronaut.energy <= 20) {
+            this.nearDeaths += 1;
+          }
+          outcome = "Explosão: super salto ou escudo necessário";
+          this.onMessage("Explosão! Faça o super salto ou use o escudo");
           if (this.astronaut.energy === 0) {
             this.history.append({ block, moduleType: type, outcome });
             this.finish("A explosão esgotou a energia do traje.");
@@ -167,6 +263,7 @@ export class GameManager {
         }
         break;
       case "energy": {
+        this.energyModulesCollected += 1;
         const recovered = this.astronaut.recharge(25);
         this.energyCollected += recovered;
         outcome = `Energia +${Math.round(recovered)}%`;
@@ -175,6 +272,7 @@ export class GameManager {
       }
       case "shield":
         this.astronaut.shieldSeconds = 5;
+        this.shieldsUsed += 1;
         outcome = "Escudo ativado";
         this.onMessage("Escudo ativado por 5 segundos");
         break;
@@ -184,14 +282,29 @@ export class GameManager {
           outcome = "Buraco negro saltado";
           this.onMessage("Buraco negro evitado");
         } else {
-          this.history.append({ block, moduleType: type, outcome: "Missão encerrada" });
-          this.finish("O astronauta caiu em um buraco negro.");
+          this.caughtInBlackHoleBlock = block;
+          this.blackHoleTimeRemaining = this.settings.blackHoleReaction;
+          outcome = "Preso — salte antes de ser sugado";
+          this.onMessage("Buraco negro! Salte agora para escapar");
+        }
+        break;
+      case "gap":
+        if (this.astronaut.isAirborne) {
+          this.modulesAvoided += 1;
+          this.nearDeaths += 1;
+          outcome = "Lacuna atravessada por salto";
+          this.onMessage("Lacuna evitada");
+        } else {
+          this.history.append({ block, moduleType: type, outcome: "Caiu no espaço" });
+          this.finish("O astronauta caiu no espaço entre os módulos.");
           return;
         }
         break;
       case "turbo":
         outcome = "Turbo: salto de 3 blocos";
         this.onMessage("Turbo! Salto automático de 3 blocos");
+        this.ultraJumps += 1;
+        this.astronaut.launchTurboJump(3 / this.settings.speed + 0.25);
         this.skipAheadThreeBlocks(block);
         break;
       case "clear":
@@ -207,8 +320,17 @@ export class GameManager {
       const block = startBlock + skipped;
       const node = this.modules.find((module) => module.block === block);
       const type = node === null ? "clear" : node.value.type;
-      if (node !== null && (type === "explosive" || type === "blackHole")) {
+      if (
+        node !== null &&
+        (type === "explosive" || type === "blackHole" || type === "gap")
+      ) {
         this.modulesAvoided += 1;
+        if (type === "explosive") {
+          this.explosivesAvoided += 1;
+        }
+        if (type === "gap") {
+          this.nearDeaths += 1;
+        }
       }
       if (node !== null) {
         node.value.resolved = true;
@@ -230,10 +352,15 @@ export class GameManager {
           : StationModule.generate(
               block,
               this.astronaut.configuration.difficulty,
-              block - this.lastHazardBlock >= MIN_HAZARD_SEPARATION,
+              block - this.lastHazardBlock >= this.settings.hazardGap,
+              GAP_CHANCE[this.astronaut.configuration.difficulty],
             );
       this.modules.append(module);
-      if (module.type === "explosive" || module.type === "blackHole") {
+      if (
+        module.type === "explosive" ||
+        module.type === "blackHole" ||
+        module.type === "gap"
+      ) {
         this.lastHazardBlock = block;
       }
     }

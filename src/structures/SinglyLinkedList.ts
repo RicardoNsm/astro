@@ -4,14 +4,19 @@ export class SinglyLinkedNode<T> {
   public constructor(public value: T) {}
 }
 
-/** Append-only list used to preserve every block in the astronaut's route. */
+/** Linked route history that preserves the order blocks were traversed. */
 export class SinglyLinkedList<T> {
   public head: SinglyLinkedNode<T> | null = null;
   public tail: SinglyLinkedNode<T> | null = null;
   private count = 0;
+  private changes = 0;
 
   public get size(): number {
     return this.count;
+  }
+
+  public get revision(): number {
+    return this.changes;
   }
 
   public append(value: T): SinglyLinkedNode<T> {
@@ -23,7 +28,18 @@ export class SinglyLinkedList<T> {
     }
     this.tail = node;
     this.count += 1;
+    this.changes += 1;
     return node;
+  }
+
+  /** Replaces the newest route record without adding a duplicate block. */
+  public replaceLast(value: T): boolean {
+    if (this.tail === null) {
+      return false;
+    }
+    this.tail.value = value;
+    this.changes += 1;
+    return true;
   }
 
   public forEach(visitor: (value: T, index: number) => void): void {
