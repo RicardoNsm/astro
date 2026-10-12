@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#080d1b" />
+    <meta
+      name="description"
+      content="Corra para escapar da estação espacial em colapso. Colete energia, desvie dos perigos e entre para o ranking."
+    />
+    <title>Astro Runner — Fuga da estação</title>
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <a class="brand" href="#" aria-label="Astro Runner início">
+          <span class="brand-mark" aria-hidden="true">✦</span>
+          <span>ASTRO<span class="brand-light">RUNNER</span></span>
+        </a>
+        <span class="topbar-status"><span class="status-dot"></span> ESTAÇÃO EM COLAPSO</span>
+      </header>
+
+      <main>
+        <section class="hero">
+          <div class="hero-copy">
+            <p class="eyebrow"><span class="eyebrow-marker"></span> PROTOCOLO DE EVACUAÇÃO <span>·</span> 01</p>
+            <h1>Corra. Salte.<br /><span>Sobreviva.</span></h1>
+            <p class="hero-description">
+              O reator entrou em colapso. Atravesse a estação, supere cada obstáculo
+              e faça sua última corrida valer a pena.
+            </p>
+            <div class="hero-briefing" aria-label="Resumo da missão">
+              <span><i class="briefing-icon jump-icon">↟</i><span><strong>Salto duplo</strong><small>Seu melhor aliado</small></span></span>
+              <span><i class="briefing-icon energy-icon">ϟ</i><span><strong>Gerencie energia</strong><small>Continue em movimento</small></span></span>
+            </div>
+          </div>
+
+          <section class="setup-card panel" aria-labelledby="setup-heading">
+            <div class="card-heading">
+              <div>
+                <p class="eyebrow">CONFIGURAÇÃO DE VOO <span class="setup-step">01 / 01</span></p>
+                <h2 id="setup-heading">Sua missão</h2>
+              </div>
+              <span class="heading-icon" aria-hidden="true"><span>✳</span></span>
+            </div>
+            <form id="setup-form">
+              <label class="field-label" for="astronaut-name">Nome do astronauta</label>
+              <input id="astronaut-name" name="name" type="text" maxlength="18" value="Comandante" autocomplete="off" required />
+              <div class="field-pair">
+                <div>
+                  <label class="field-label" for="suit-color">Cor do traje</label>
+                  <label class="color-picker" for="suit-color">
+                    <input id="suit-color" name="color" type="color" value="#77e5d1" />
+                    <span>Escolher cor</span>
+                  </label>
+                </div>
+                <div>
+                  <label class="field-label" for="helmet-type">Capacete</label>
+                  <select id="helmet-type" name="helmet">
+                    <option value="visor">Visor panorâmico</option>
+                    <option value="classic">Clássico</option>
+                    <option value="pilot">Piloto</option>
+                  </select>
+                </div>
+              </div>
+              <label class="field-label">Nível de dificuldade</label>
+              <div class="difficulty-options" role="radiogroup" aria-label="Nível de dificuldade">
+                <label class="difficulty-choice">
+                  <input type="radio" name="difficulty" value="easy" />
+                  <span><strong>Fácil</strong><small>Mais energia</small></span>
+                </label>
+                <label class="difficulty-choice">
+                  <input type="radio" name="difficulty" value="medium" checked />
+                  <span><strong>Médio</strong><small>Equilibrado</small></span>
+                </label>
+                <label class="difficulty-choice">
+                  <input type="radio" name="difficulty" value="hard" />
+                  <span><strong>Difícil</strong><small>Sem margem</small></span>
+                </label>
+              </div>
+              <button class="primary-button" type="submit">
+                <span>Iniciar missão</span><span aria-hidden="true">↗</span>
+              </button>
+            </form>
+          </section>
+        </section>
+
+        <section class="game-section panel" aria-label="Área de jogo">
+          <div class="game-toolbar">
+            <div class="mission-label">
+              <span class="live-indicator" aria-hidden="true"></span>
+              <span><small>SIMULAÇÃO DE FUGA</small><strong id="mission-status">AGUARDANDO LANÇAMENTO</strong></span>
+            </div>
+            <div class="game-stats" aria-live="polite">
+              <div class="stat"><span>DISTÂNCIA</span><strong><span id="distance-value">0</span><small> blocos</small></strong></div>
+              <div class="stat"><span>TEMPO DE FUGA</span><strong id="time-value">00:00</strong></div>
+              <div class="stat energy-stat"><span>ENERGIA</span><strong><span id="energy-value">100</span><small>%</small></strong><i class="energy-track"><i id="energy-bar"></i></i></div>
+            </div>
+          </div>
+          <div class="canvas-wrap">
+            <canvas id="game-canvas" aria-label="Astronauta correndo pelos módulos da estação espacial"></canvas>
+            <div class="canvas-hint" id="canvas-hint">Pressione <kbd>ESPAÇO</kbd> para saltar</div>
+            <div class="toast" id="game-toast" role="status" aria-live="polite"></div>
+            <section class="results-overlay" id="results-overlay" aria-labelledby="results-title" hidden>
+              <p class="eyebrow">RELATÓRIO DE MISSÃO</p>
+              <h2 id="results-title">Fim de missão</h2>
+              <p class="results-cause" id="results-cause"></p>
+              <div class="results-stats">
+                <div><span>DISTÂNCIA</span><strong id="results-distance">0 blocos</strong></div>
+                <div><span>TEMPO</span><strong id="results-time">00:00</strong></div>
+                <div><span>MÓDULOS EVITADOS</span><strong id="results-avoided">0</strong></div>
+                <div><span>ENERGIA COLETADA</span><strong id="results-energy">0%</strong></div>
+              </div>
+              <button class="primary-button results-button" id="results-history-button" type="button">Revisar histórico <span>↓</span></button>
+            </section>
+          </div>
+          <div class="game-footer">
+            <div class="legend">
+              <span><i class="legend-dot explosive"></i> Explosivo</span>
+              <span><i class="legend-dot energy"></i> Energia</span>
+              <span><i class="legend-dot shield"></i> Escudo</span>
+              <span><i class="legend-dot black-hole"></i> Buraco negro</span>
+              <span><i class="legend-dot turbo"></i> Turbo</span>
+            </div>
+            <div class="controls-hint"><kbd>ESPAÇO</kbd> / <kbd>↑</kbd> saltar <span>·</span> salto duplo no ar <button class="jump-button" id="jump-button" type="button" aria-label="Saltar">SALTAR ↗</button></div>
+          </div>
+        </section>
+
+        <section class="below-grid">
+          <section class="panel info-panel">
+            <div class="section-heading">
+              <div><p class="eyebrow">CONHEÇA O PERCURSO</p><h2>Perigos &amp; recursos</h2></div>
+              <span class="subtle-icon" aria-hidden="true">⌁</span>
+            </div>
+            <div class="module-guide">
+              <article><span class="guide-icon explosive">✹</span><div><strong>Módulo explosivo</strong><p>Qualquer salto ativo evita a explosão. O salto duplo amplia a janela.</p></div></article>
+              <article><span class="guide-icon energy">ϟ</span><div><strong>Recarga de energia</strong><p>Recarregue a bateria do traje em até 25%.</p></div></article>
+              <article><span class="guide-icon shield">⬡</span><div><strong>Escudo temporário</strong><p>Fique imune a explosivos por alguns segundos.</p></div></article>
+              <article><span class="guide-icon black-hole">◉</span><div><strong>Buraco negro</strong><p>Um passo em falso e a missão acaba.</p></div></article>
+              <article><span class="guide-icon turbo">➤</span><div><strong>Turbo automático</strong><p>Salte três blocos à frente instantaneamente.</p></div></article>
+            </div>
+          </section>
+
+          <section class="panel info-panel records-panel">
+            <div class="section-heading">
+              <div><p class="eyebrow">SEU DESEMPENHO</p><h2>Registros da missão</h2></div>
+            </div>
+            <div class="tab-buttons" role="tablist" aria-label="Registros">
+              <button class="tab-button active" id="history-tab" type="button" role="tab" aria-selected="true" aria-controls="history-panel">Histórico</button>
+              <button class="tab-button" id="ranking-tab" type="button" role="tab" aria-selected="false" aria-controls="ranking-panel">Ranking</button>
+            </div>
+            <div class="record-list" id="history-panel" role="tabpanel" aria-labelledby="history-tab">
+              <p class="empty-state">Seu trajeto aparecerá aqui após a missão.</p>
+            </div>
+            <div class="record-list" id="ranking-panel" role="tabpanel" aria-labelledby="ranking-tab" hidden>
+              <p class="empty-state">Complete uma missão para inaugurar o ranking.</p>
+            </div>
+          </section>
+        </section>
+      </main>
+
+      <footer><span>ASTRO RUNNER</span><span>Uma missão. Uma chance. Um astronauta.</span></footer>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
